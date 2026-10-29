@@ -1,13 +1,21 @@
 import React, { useState } from 'react';
-import { Plus, CheckCircle2, Clock, Trash2, Calendar, Tag } from 'lucide-react';
+import { Plus, CheckCircle2, Clock, Trash2, Calendar, Tag, Edit3 } from 'lucide-react';
 import { PersonalTask, TaskPriority } from '../types';
 import { formatDeadlineRelative, getPriorityMeta } from '../utils/formatters';
 import { TaskModal } from './TaskModal';
+import { ConfirmModal } from './ConfirmModal';
 
 interface PersonalTasksViewProps {
   tasks: PersonalTask[];
   onToggleTask: (id: string) => void;
   onAddTask: (task: {
+    title: string;
+    deadline?: string;
+    priority: TaskPriority;
+    category?: 'Учёба' | 'Деканат' | 'Проект' | 'Личное';
+  }) => void;
+  onUpdateTask?: (task: {
+    id: string;
     title: string;
     deadline?: string;
     priority: TaskPriority;
@@ -20,10 +28,13 @@ export const PersonalTasksView: React.FC<PersonalTasksViewProps> = ({
   tasks,
   onToggleTask,
   onAddTask,
+  onUpdateTask,
   onDeleteTask,
 }) => {
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<PersonalTask | null>(null);
+  const [taskToDelete, setTaskToDelete] = useState<PersonalTask | null>(null);
 
   const completedCount = tasks.filter((t) => t.completed).length;
   const totalCount = tasks.length;
@@ -182,14 +193,25 @@ export const PersonalTasksView: React.FC<PersonalTasksViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Delete button */}
-                  <button
-                    onClick={() => onDeleteTask(task.id)}
-                    aria-label="Удалить задачу"
-                    className="min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition-colors shrink-0"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {/* Action buttons: Edit & Delete */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => setEditingTask(task)}
+                      aria-label="Редактировать задачу"
+                      title="Редактировать"
+                      className="min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/30 rounded-xl transition-colors"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setTaskToDelete(task)}
+                      aria-label="Удалить задачу"
+                      title="Удалить"
+                      className="min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -197,11 +219,49 @@ export const PersonalTasksView: React.FC<PersonalTasksViewProps> = ({
         )}
       </div>
 
-      {/* Modal for creating a task */}
+      {/* Modal for creating or editing a task */}
       <TaskModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onAddTask={onAddTask}
+        isOpen={isModalOpen || !!editingTask}
+        initialTask={editingTask}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingTask(null);
+        }}
+        onSaveTask={(saved) => {
+          if (saved.id && onUpdateTask) {
+            onUpdateTask({
+              id: saved.id,
+              title: saved.title,
+              deadline: saved.deadline,
+              priority: saved.priority,
+              category: saved.category,
+            });
+          } else {
+            onAddTask({
+              title: saved.title,
+              deadline: saved.deadline,
+              priority: saved.priority,
+              category: saved.category,
+            });
+          }
+        }}
+      />
+
+      {/* Confirmation modal for deleting a task */}
+      <ConfirmModal
+        isOpen={!!taskToDelete}
+        title="Удалить личную задачу?"
+        description={taskToDelete ? `Вы уверены, что хотите удалить задачу «${taskToDelete.title}»? Это действие нельзя будет отменить.` : ''}
+        confirmText="Удалить"
+        cancelText="Отмена"
+        isDanger={true}
+        onConfirm={() => {
+          if (taskToDelete) {
+            onDeleteTask(taskToDelete.id);
+            setTaskToDelete(null);
+          }
+        }}
+        onClose={() => setTaskToDelete(null)}
       />
     </div>
   );

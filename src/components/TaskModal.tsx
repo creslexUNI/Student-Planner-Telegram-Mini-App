@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Calendar, Flag, Tag } from 'lucide-react';
-import { TaskPriority } from '../types';
+import { PersonalTask, TaskPriority } from '../types';
 
 interface TaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddTask: (task: {
+  initialTask?: PersonalTask | null;
+  onSaveTask: (task: {
+    id?: string;
     title: string;
     deadline?: string;
     priority: TaskPriority;
@@ -13,12 +15,27 @@ interface TaskModalProps {
   }) => void;
 }
 
-export const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onAddTask }) => {
+export const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, initialTask, onSaveTask }) => {
   const [title, setTitle] = useState('');
   const [deadline, setDeadline] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [category, setCategory] = useState<'Учёба' | 'Деканат' | 'Проект' | 'Личное'>('Учёба');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (initialTask) {
+      setTitle(initialTask.title || '');
+      setDeadline(initialTask.deadline || '');
+      setPriority(initialTask.priority || 'medium');
+      setCategory(initialTask.category || 'Учёба');
+    } else {
+      setTitle('');
+      setDeadline('');
+      setPriority('medium');
+      setCategory('Учёба');
+    }
+    setError('');
+  }, [initialTask, isOpen]);
 
   if (!isOpen) return null;
 
@@ -29,18 +46,14 @@ export const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onAddTask
       return;
     }
 
-    onAddTask({
+    onSaveTask({
+      id: initialTask?.id,
       title: title.trim(),
       deadline: deadline ? deadline : undefined,
       priority,
       category,
     });
 
-    setTitle('');
-    setDeadline('');
-    setPriority('medium');
-    setCategory('Учёба');
-    setError('');
     onClose();
   };
 
@@ -56,7 +69,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onAddTask
       >
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
           <h3 id="new-task-title" className="text-base font-bold text-slate-900 dark:text-slate-100">
-            Новая личная задача
+            {initialTask ? 'Редактировать задачу' : 'Новая личная задача'}
           </h3>
           <button
             onClick={onClose}

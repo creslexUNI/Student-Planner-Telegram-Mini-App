@@ -12,6 +12,9 @@ export interface Lesson {
   endTime: string;   // "10:35"
   room: string;      // "ауд. 312 (Гл. корпус)"
   teacher: string;   // "Иванов И.И."
+  dayOfWeek?: DayOfWeek;
+  weekType?: 'odd' | 'even' | 'both';
+  specificDate?: string; // "YYYY-MM-DD"
   notes?: string;
   onlineLink?: string;
 }
@@ -20,6 +23,7 @@ export type HomeworkStatus = 'pending' | 'in_progress' | 'urgent' | 'completed';
 
 export interface HomeworkItem {
   id: string;
+  groupId?: string;
   subject: string;
   title: string;
   description: string;
@@ -35,6 +39,7 @@ export type TaskPriority = 'low' | 'medium' | 'high';
 export interface PersonalTask {
   id: string;
   title: string;
+  description?: string;
   deadline?: string;
   completed: boolean;
   priority: TaskPriority;
@@ -42,7 +47,16 @@ export interface PersonalTask {
   createdAt: string;
 }
 
-export type TabType = 'today' | 'schedule' | 'homework' | 'tasks';
+export type TabType = 'today' | 'schedule' | 'homework' | 'tasks' | 'settings';
+
+export interface UserProfile {
+  name: string;
+  email: string;
+  university?: string | null;
+  faculty?: string | null;
+  course?: number | null;
+  groupName?: string | null;
+}
 
 export interface DaySchedule {
   day: DayOfWeek;

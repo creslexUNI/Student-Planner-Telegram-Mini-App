@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Calendar, BookOpen, CheckSquare } from 'lucide-react';
+import { Home, Calendar, BookOpen, CheckSquare, Settings } from 'lucide-react';
 import { TabType } from '../types';
 
 interface NavigationProps {
@@ -39,6 +39,11 @@ export const Navigation: React.FC<NavigationProps> = ({
       icon: CheckSquare,
       badge: incompleteTasksCount > 0 ? incompleteTasksCount : undefined,
       badgeColor: 'bg-sky-500',
+    },
+    {
+      id: 'settings' as TabType,
+      label: 'Настройки',
+      icon: Settings,
     },
   ];
 
@@ -80,7 +85,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         aria-label="Мобильная навигация"
         className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-200/90 dark:border-slate-800/90 transition-colors duration-200 pb-[env(safe-area-inset-bottom,0px)]"
       >
-        <div className="grid grid-cols-4 items-center h-16 max-w-md mx-auto px-2">
+        <div className="grid grid-cols-5 items-center h-16 max-w-md mx-auto px-1">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;

@@ -1,20 +1,215 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# Student Planner — Fullstack Telegram Mini App
 
-# Run and deploy your AI Studio app
+Полнофункциональное веб-приложение для студентов и учебных групп: расписание пар (двухнедельный цикл — числитель/знаменатель), общие домашние задания с персональным отслеживанием сдачи, трекер личных дел и авторизация с разделением ролей.
 
-This contains everything you need to run your app locally.
+Приложение спроектировано в нативной эстетике Telegram Mini App, работает на смартфонах и десктопе, сохраняет данные в **PostgreSQL** через **Prisma ORM** и готово к развёртыванию на **Layero** и в облачных контейнерах.
 
-View your app in AI Studio: https://ai.studio/apps/78e0698f-166f-489a-b5d3-e2f5ea5a1fc1
+---
 
-## Run Locally
+## 1. Стек технологий
 
-**Prerequisites:**  Node.js
+- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4, Lucide Icons.
+- **Backend**: Node.js 22+, Express, TypeScript, REST API, Zod (валидация схем), bcryptjs (хеширование паролей).
+- **База данных**: PostgreSQL, Prisma ORM, миграции SQL.
+- **Безопасность**: Защищённые серверные сессии через HTTP-only cookies (`session_token`), строгая изоляция личных данных пользователей, ролевая модель для групп (ADMIN, HEADMAN, MEMBER).
+- **Сборщик и рантайм**: Vite (клиент в `dist/`) + esbuild (серверный бандл в `index.js`).
 
+---
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## 2. Архитектура проекта
+
+```
+├── prisma/
+│   ├── schema.prisma                  # Схема базы данных PostgreSQL
+│   └── migrations/
+│       └── 20261029000000_init/       # Исходная SQL-миграция
+├── server/
+│   ├── app.ts                         # Конфигурация Express, парсеры и роутинг
+│   ├── index.ts                       # Серверный entry point (dev: Vite middleware, prod: static dist)
+│   ├── lib/
+│   │   └── prisma.ts                  # Singleton PrismaClient с проверкой healthcheck
+│   ├── middleware/
+│   │   ├── auth.ts                    # Проверка сессий и прав доступа (RBAC)
+│   │   └── errorHandler.ts            # Централизованная обработка ошибок (Zod, Prisma, 404, 500)
+│   └── routes/
+│       ├── auth.ts                    # Регистрация, вход, выход, профиль
+│       ├── dashboard.ts               # Сводка данных для экрана «Сегодня»
+│       ├── groups.ts                  # Управление учебными группами и инвайт-кодами
+│       ├── health.ts                  # GET /api/health (статус сервера и БД)
+│       ├── homework.ts                # Общее ДЗ, личный прогресс сдачи, конвертация в задачи
+│       ├── schedule.ts                # Расписание (недели, дни, предметы, аудитории)
+│       └── tasks.ts                   # Личные задачи с полной изоляцией пользователей
+├── src/
+│   ├── api/
+│   │   └── client.ts                  # Единый типизированный API-клиент с credentials: 'include'
+│   ├── components/
+│   │   ├── AuthModal.tsx              # Модальное окно авторизации и профиля
+│   │   ├── Header.tsx                 # Шапка (дата, группа, числитель/знаменатель, темы)
+│   │   ├── HomeworkView.tsx           # Экран общего домашнего задания группы
+│   │   ├── Navigation.tsx             # Нижний таб-бар для мобильных и верхний для ПК
+│   │   ├── PersonalTasksView.tsx      # Экран персональных задач и дел
+│   │   ├── ScheduleView.tsx           # Экран расписания с селектором дней и чётности
+│   │   ├── TaskModal.tsx              # Создание новой личной задачи
+│   │   └── TodayView.tsx              # Главный экран «Сегодня» со сводкой дня
+│   ├── data/
+│   │   └── mockData.ts                # Начальные демо-данные для ознакомления
+│   ├── types/
+│   │   └── index.ts                   # TypeScript-интерфейсы приложения
+│   ├── App.tsx                        # Главный компонент и состояние
+│   └── main.tsx                       # Точка входа React
+├── index.js                           # Скомпилированный production-бандл сервера для Layero
+├── server.ts                          # Точка входа для локальной разработки (tsx)
+└── package.json                       # Скрипты dev, build, start, db:migrate
+```
+
+---
+
+## 3. Требования к окружению
+
+- **Node.js**: версия 20.x или 22.x LTS.
+- **npm** или **bun**: пакетный менеджер.
+- **PostgreSQL**: версия 14, 15 или 16 (локальный сервер, Supabase, Neon, AWS RDS или Layero PostgreSQL).
+
+---
+
+## 4. Локальный запуск и настройка
+
+### Шаг 1. Клонирование и установка зависимостей
+```bash
+npm install
+```
+
+### Шаг 2. Настройка переменных окружения
+Скопируйте шаблон `.env.example` в `.env`:
+```bash
+cp .env.example .env
+```
+Заполните параметры в `.env`:
+```env
+DATABASE_URL="postgresql://student_user:your_password@localhost:5432/student_planner?schema=public"
+NODE_ENV="development"
+PORT="3000"
+SESSION_SECRET="your-super-secret-random-key-at-least-32-chars"
+```
+
+### Шаг 3. Инициализация базы данных PostgreSQL
+Если база данных уже запущена, примените миграции Prisma:
+```bash
+npm run db:migrate
+```
+Или выполните генерацию Prisma-клиента:
+```bash
+npm run db:generate
+```
+
+### Шаг 4. Запуск в режиме разработки
+```bash
+npm run dev
+```
+Сервер запустится на `http://localhost:3000`. Express работает в связке с Vite middlewares, обеспечивая мгновенную отдачу фронтенда и API по маршрутам `/api/*`.
+
+---
+
+## 5. Сборка и запуск в Production (включая Layero)
+
+### Как устроен запуск на Layero:
+Layero по умолчанию ищет файл `index.js` в корне проекта или использует команду `npm start`.
+Наша команда сборки `npm run build`:
+1. Собирает клиентский React-код через Vite в папку `dist/`.
+2. Компилирует и бандлит серверный TypeScript-код через `esbuild` в чистый ESM-файл `index.js` в корне проекта.
+
+### Команды для production:
+```bash
+# Сборка фронтенда и бэкенда:
+npm run build
+
+# Запуск скомпилированного сервера:
+npm start
+# (или напрямую: node index.js)
+```
+
+В режиме `NODE_ENV=production` сервер:
+- Слушает порт из `process.env.PORT` (или 3000 по умолчанию) на адресе `0.0.0.0`.
+- Раздает статические оптимизированные ассеты из `dist/`.
+- Корректно перенаправляет SPA-маршруты на `dist/index.html`.
+- Обрабатывает REST API-запросы по префиксу `/api/*`.
+- Неизвестные API-запросы возвращают JSON 404, а не ошибочную HTML-страницу.
+
+---
+
+## 6. Проверка работоспособности (Healthcheck)
+
+Сервер предоставляет эндпоинт проверки здоровья:
+```http
+GET /api/health
+```
+
+Пример успешного ответа при подключенной БД:
+```json
+{
+  "status": "ok",
+  "timestamp": "2026-10-29T20:11:20.527Z",
+  "uptime": 124.5,
+  "environment": "production",
+  "database": {
+    "connected": true,
+    "message": "Database connection active"
+  }
+}
+```
+Если база данных ещё не сконфигурирована или недоступна, эндпоинт возвращает HTTP 200 с понятным описанием причины (`connected: false`), не роняя при этом веб-сервер.
+
+---
+
+## 7. Спецификация REST API
+
+### Авторизация и сессии
+- `POST /api/auth/register` — регистрация студента (имя, email, пароль, создание группы или присоединение по инвайт-коду).
+- `POST /api/auth/login` — аутентификация пользователя и установка защищенной HTTP-only cookie `session_token`.
+- `POST /api/auth/logout` — завершение сессии и удаление cookie.
+- `GET /api/auth/me` — получение данных текущего авторизованного пользователя и его групп.
+
+### Личные задачи (строгая изоляция пользователей)
+- `GET /api/tasks?status=all|active|completed` — список персональных дел пользователя.
+- `GET /api/tasks/:id` — просмотр конкретной задачи (только для владельца).
+- `POST /api/tasks` — создание новой личной задачи.
+- `PATCH /api/tasks/:id` — обновление названия, срока, приоритета или отметки о завершении.
+- `DELETE /api/tasks/:id` — удаление задачи (с проверкой прав).
+
+### Общее домашнее задание группы
+- `GET /api/homework?status=...&subject=...` — список заданий групп пользователя с персональным статусом выполнения.
+- `GET /api/homework/:id` — детальная информация о задании.
+- `POST /api/homework` — добавление задания в группу (доступно старосте / администратору).
+- `PATCH /api/homework/:id/progress` — обновление личного статуса сдачи («В процессе» / «Сдано») без порчи данных других студентов!
+- `POST /api/homework/:id/convert-to-task` — конвертация задания группы в личную задачу студента.
+- `DELETE /api/homework/:id` — удаление задания группы (с проверкой прав).
+
+### Расписание занятий
+- `GET /api/schedule?dayOfWeek=...&weekType=odd|even` — пары на день с учётом числителя/знаменателя.
+- `GET /api/schedule/week?weekType=odd|even` — полное расписание на неделю по дням.
+- `POST /api/schedule` — добавление занятия в расписание.
+- `DELETE /api/schedule/:id` — удаление занятия.
+
+### Учебные группы
+- `GET /api/groups` — группы, в которых состоит пользователь.
+- `POST /api/groups` — создание новой группы (создатель получает роль ADMIN и инвайт-код).
+- `POST /api/groups/join` — вступление в группу по инвайт-коду.
+- `POST /api/groups/:id/leave` — выход из группы.
+- `GET /api/groups/:id/members` — список одногруппников.
+
+---
+
+## 8. Бизнес-логика: разделение общего и личного
+
+1. **Групповые задания (`Homework`)**: хранятся на уровне группы. Статус сдачи конкретным студентом пишется в отдельную таблицу `HomeworkProgress` с ключом `(homeworkId, userId)`. Ни один студент не может случайно отменить или удалить статус выполнения у своих одногруппников.
+2. **Личные задачи (`Task`)**: принадлежат исключительно одному пользователю (`userId`). Доступ к чужим задачам по ID строго блокируется сервером с кодом HTTP 403 Forbidden.
+3. **Конвертация**: нажатие кнопки «В мои дела» создает копию задания в виде персональной задачи со ссылкой на исходный материал.
+
+---
+
+## 9. Подготовка к Telegram Mini App
+
+Архитектура полностью готова к превращению в Telegram Mini App:
+- Мобильный интерфейс следует гайдлайнам Telegram (размеры кнопок $\ge 48$px, нижний таб-бар, поддержка темной темы Telegram).
+- В `server/middleware/auth.ts` предусмотрена точка расширения для валидации `window.Telegram.WebApp.initData` через HMAC-SHA256 подпись Telegram Bot Token на бэкенде.
+- Все API-запросы выполняются по относительным путям `/api/*`, что позволяет открывать приложение через любой HTTPS туннель или домен без CORS-проблем.
