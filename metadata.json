@@ -1,0 +1,6 @@
+{
+  "name": "Student Planner",
+  "description": "Telegram Mini App для студентов: расписание пар, домашние задания группы и личные задачи.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
